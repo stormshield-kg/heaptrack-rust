@@ -1,0 +1,8 @@
+[package]
+name = "heaptrack-profile"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+backtrace = "0.3.75"
+libc = "0.2.178"

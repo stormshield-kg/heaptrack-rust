@@ -1,0 +1,11 @@
+[package]
+name = "example"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+heaptrack-interpret = { path = "../heaptrack-interpret" }
+heaptrack-profile = { path = "../heaptrack-profile" }
+tikv-jemalloc-sys = "0.6.1"
+tikv-jemallocator = "0.6.1"

@@ -1,0 +1,9 @@
+[package]
+name = "heaptrack-interpret"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+addr2line = "0.25.1"
+object = "0.37.3"
+rustc-hash = "2.1.1"
