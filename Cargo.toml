@@ -1,5 +1,5 @@
 [workspace]
-members = ["example", "heaptrack-interpret", "heaptrack-interpret-cli", "heaptrack-profile"]
+members = ["example", "heaptrack-interpret", "heaptrack-interpret-bin", "heaptrack-profile"]
 resolver = "3"
 
 [profile.release]
