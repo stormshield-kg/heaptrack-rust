@@ -38,17 +38,26 @@ impl<T> Heaptrack<T> {
 
     #[inline]
     pub fn handle_malloc(&self, size: usize, ptr: usize) {
-        self.inner.handle_malloc(size, ptr);
+        if self.inner.enabled.load(Ordering::Acquire) {
+            std::hint::cold_path();
+            self.inner.handle_malloc(size, ptr);
+        }
     }
 
     #[inline]
     pub fn handle_free(&self, ptr: usize) {
-        self.inner.handle_free(ptr);
+        if self.inner.enabled.load(Ordering::Acquire) {
+            std::hint::cold_path();
+            self.inner.handle_free(ptr);
+        }
     }
 
     #[inline]
     pub fn handle_realloc(&self, ptr: usize, size: usize, new_ptr: usize) {
-        self.inner.handle_realloc(ptr, size, new_ptr);
+        if self.inner.enabled.load(Ordering::Acquire) {
+            std::hint::cold_path();
+            self.inner.handle_realloc(ptr, size, new_ptr);
+        }
     }
 }
 
@@ -56,28 +65,47 @@ unsafe impl<T: GlobalAlloc + Sync> GlobalAlloc for Heaptrack<T> {
     #[inline]
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         let ptr = unsafe { self.allocator.alloc(layout) };
-        self.inner.handle_malloc(layout.size(), ptr as usize);
+
+        if self.inner.enabled.load(Ordering::Acquire) {
+            std::hint::cold_path();
+            self.inner.handle_malloc(layout.size(), ptr as usize);
+        }
+
         ptr
     }
 
     #[inline]
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
         let ptr = unsafe { self.allocator.alloc_zeroed(layout) };
-        self.inner.handle_malloc(layout.size(), ptr as usize);
+
+        if self.inner.enabled.load(Ordering::Acquire) {
+            std::hint::cold_path();
+            self.inner.handle_malloc(layout.size(), ptr as usize);
+        }
+
         ptr
     }
 
     #[inline]
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         unsafe { self.allocator.dealloc(ptr, layout) }
-        self.inner.handle_free(ptr as usize);
+
+        if self.inner.enabled.load(Ordering::Acquire) {
+            std::hint::cold_path();
+            self.inner.handle_free(ptr as usize);
+        }
     }
 
     #[inline]
     unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
         let new_ptr = unsafe { self.allocator.realloc(ptr, layout, new_size) };
-        self.inner.handle_free(ptr as usize);
-        self.inner.handle_malloc(layout.size(), new_ptr as usize);
+
+        if self.inner.enabled.load(Ordering::Acquire) {
+            std::hint::cold_path();
+            self.inner.handle_free(ptr as usize);
+            self.inner.handle_malloc(layout.size(), new_ptr as usize);
+        }
+
         new_ptr
     }
 }
@@ -152,20 +180,18 @@ impl HeaptrackInner {
 
     #[inline(never)] // used to remove inner backtrace frames
     fn handle_malloc(&self, size: usize, ptr: usize) {
-        if self.enabled.load(Ordering::Acquire) {
-            self.with_lock(|state| {
-                if let Some(state) = state {
-                    let HeaptrackState { tree, writer, .. } = state;
-                    let index = tree.index(writer);
-                    let _ = writeln!(writer, "+ {size:x} {index:x} {ptr:x}");
-                }
-            })
-        }
+        self.with_lock(|state| {
+            if let Some(state) = state {
+                let HeaptrackState { tree, writer, .. } = state;
+                let index = tree.index(writer);
+                let _ = writeln!(writer, "+ {size:x} {index:x} {ptr:x}");
+            }
+        })
     }
 
     #[inline]
     fn handle_free(&self, ptr: usize) {
-        if ptr != 0 && self.enabled.load(Ordering::Acquire) {
+        if ptr != 0 {
             self.with_lock(|state| {
                 if let Some(state) = state {
                     let _ = writeln!(state.writer, "- {ptr:x}");

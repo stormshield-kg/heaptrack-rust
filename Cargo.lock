@@ -90,6 +90,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "bench"
+version = "0.0.0"
+dependencies = [
+ "heaptrack-interpret",
+ "heaptrack-profile",
+ "tikv-jemalloc-sys",
+ "tikv-jemallocator",
+]
+
+[[package]]
 name = "cc"
 version = "1.2.48"
 source = "registry+https://github.com/rust-lang/crates.io-index"

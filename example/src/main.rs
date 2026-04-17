@@ -1,5 +1,5 @@
-use std::ffi::c_void;
-use std::fs::File;
+use std::ffi::{c_int, c_void};
+use std::fs::{self, File};
 use std::io::{self, BufReader, BufWriter};
 
 use heaptrack_profile::Heaptrack;
@@ -20,6 +20,13 @@ fn calloc(number: usize, size: usize) -> *mut c_void {
     let ptr = unsafe { tikv_jemalloc_sys::calloc(number, size) };
     HEAPTRACK.handle_malloc(size, ptr as usize);
     ptr
+}
+
+#[unsafe(no_mangle)]
+fn posix_memalign(ptr: *mut *mut c_void, align: usize, size: usize) -> c_int {
+    let res = unsafe { tikv_jemalloc_sys::posix_memalign(ptr, align, size) };
+    HEAPTRACK.handle_malloc(size, ptr as usize);
+    res
 }
 
 #[unsafe(no_mangle)]
@@ -45,7 +52,7 @@ fn do_work() {
 }
 
 fn main() -> io::Result<()> {
-    std::fs::create_dir_all("out")?;
+    fs::create_dir_all("out")?;
 
     let raw_path = "out/dump-raw.txt";
     let interpreted_path = "out/dump.txt";
