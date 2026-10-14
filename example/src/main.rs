@@ -9,35 +9,43 @@ use tikv_jemallocator::Jemalloc;
 static HEAPTRACK: Heaptrack<Jemalloc> = Heaptrack::new(Jemalloc);
 
 #[unsafe(no_mangle)]
-fn malloc(size: usize) -> *mut c_void {
+unsafe extern "C" fn malloc(size: usize) -> *mut c_void {
     let ptr = unsafe { tikv_jemalloc_sys::malloc(size) };
-    HEAPTRACK.handle_malloc(size, ptr as usize);
+    if !ptr.is_null() {
+        HEAPTRACK.handle_malloc(size, ptr as usize);
+    }
     ptr
 }
 
 #[unsafe(no_mangle)]
-fn calloc(number: usize, size: usize) -> *mut c_void {
+unsafe extern "C" fn calloc(number: usize, size: usize) -> *mut c_void {
     let ptr = unsafe { tikv_jemalloc_sys::calloc(number, size) };
-    HEAPTRACK.handle_malloc(size, ptr as usize);
+    if !ptr.is_null() {
+        HEAPTRACK.handle_malloc(number * size, ptr as usize);
+    }
     ptr
 }
 
 #[unsafe(no_mangle)]
-fn posix_memalign(ptr: *mut *mut c_void, align: usize, size: usize) -> c_int {
+unsafe extern "C" fn posix_memalign(ptr: *mut *mut c_void, align: usize, size: usize) -> c_int {
     let res = unsafe { tikv_jemalloc_sys::posix_memalign(ptr, align, size) };
-    HEAPTRACK.handle_malloc(size, ptr as usize);
+    if !ptr.is_null() {
+        HEAPTRACK.handle_malloc(size, ptr as usize);
+    }
     res
 }
 
 #[unsafe(no_mangle)]
-fn realloc(ptr: *mut c_void, size: usize) -> *mut c_void {
+unsafe extern "C" fn realloc(ptr: *mut c_void, size: usize) -> *mut c_void {
     let new_ptr = unsafe { tikv_jemalloc_sys::realloc(ptr, size) };
-    HEAPTRACK.handle_realloc(ptr as usize, size, new_ptr as usize);
+    if !new_ptr.is_null() {
+        HEAPTRACK.handle_realloc(ptr as usize, size, new_ptr as usize);
+    }
     new_ptr
 }
 
 #[unsafe(no_mangle)]
-fn free(ptr: *mut c_void) {
+unsafe extern "C" fn free(ptr: *mut c_void) {
     unsafe { tikv_jemalloc_sys::free(ptr) };
     HEAPTRACK.handle_free(ptr as usize);
 }
