@@ -103,7 +103,7 @@ unsafe impl<T: GlobalAlloc + Sync> GlobalAlloc for Heaptrack<T> {
         if self.inner.enabled.load(Ordering::Acquire) {
             std::hint::cold_path();
             self.inner.handle_free(ptr as usize);
-            self.inner.handle_malloc(layout.size(), new_ptr as usize);
+            self.inner.handle_malloc(new_size, new_ptr as usize);
         }
 
         new_ptr
@@ -174,6 +174,7 @@ impl HeaptrackInner {
             let _ = state.write_timestamp();
             let _ = state.write_rss();
             let _ = state.writer.flush();
+            state.stop_timer.store(true, Ordering::Relaxed);
         }
         *state = None;
     }
